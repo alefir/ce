@@ -2,8 +2,6 @@ use itertools::Itertools;
 use pretty_hex::*;
 use std::env;
 use std::fs;
-use std::io;
-use std::io::Read;
 
 fn main() -> Result<(), std::io::Error> {
     println!("carter-emu v{}", env!("CARGO_PKG_VERSION"));
@@ -45,8 +43,6 @@ fn execute(mem: &mut Vec<u8>) {
     let mut rpl = 0; // return pointer low
     let mut rph = 0; // return pointer high
 
-    let mut stdin = io::stdin();
-
     loop {
         if ipl == 256 {
             return;
@@ -55,13 +51,6 @@ fn execute(mem: &mut Vec<u8>) {
 
         loop {
             let inst = ins[iph];
-            print_state(ipl, iph, dp, mem, rpl, rph, inst);
-
-            println!("{}", pretty_hex(&mem));
-
-            // debug step
-            let _ = stdin.read(&mut [0u8]).unwrap();
-
             match inst {
                 Instruction::LoopOpen => {
                     rpl = ipl;
@@ -93,39 +82,9 @@ fn execute(mem: &mut Vec<u8>) {
                 break;
             }
         }
-        // ipl += 1;
     }
 }
 
-fn print_state(
-    ipl: usize,
-    iph: usize,
-    dp: usize,
-    mem: &mut Vec<u8>,
-    rpl: usize,
-    rph: usize,
-    inst: Instruction,
-) {
-    println!(
-        "ipl: {:2X} = {}
-iph: {:2X}
- dp: {:2X} = {:2X}
-rpl: {:2X} = {}
-rph: {:2X}
->>> {}",
-        ipl,
-        Instruction::display_byte(mem[ipl]),
-        iph,
-        dp,
-        mem[dp],
-        rpl,
-        Instruction::display_byte(mem[rpl]),
-        rph,
-        inst
-    );
-}
-
-#[allow(dead_code)]
 #[derive(Copy, Clone)]
 enum Instruction {
     LoopOpen,
@@ -196,10 +155,5 @@ impl Instruction {
             | Instruction::to_pair(is.get(1)) << 4
             | Instruction::to_pair(is.get(2)) << 2
             | Instruction::to_pair(is.get(3))
-    }
-
-    fn display_byte(byte: u8) -> String {
-        let is = Instruction::from_byte(byte);
-        format!("{} {} {} {}", is[0], is[1], is[2], is[3])
     }
 }
