@@ -66,10 +66,11 @@ fn execute(mem: &mut Vec<u8>, step: u8) {
         loop {
             let inst = ins[iph];
 
-            if step > 2 {
-                print_state(ipl, iph, dp, mem, rpl, rph, inst);
-            }
             if step > 1 {
+                print_state(ipl, iph, dp, mem, rpl, rph);
+            }
+            if step > 0 {
+                println!(">>> {inst}");
                 let _ = stdin.read(&mut [0u8]).unwrap();
             }
 
@@ -107,22 +108,13 @@ fn execute(mem: &mut Vec<u8>, step: u8) {
     }
 }
 
-fn print_state(
-    ipl: usize,
-    iph: usize,
-    dp: usize,
-    mem: &Vec<u8>,
-    rpl: usize,
-    rph: usize,
-    inst: Instruction,
-) {
+fn print_state(ipl: usize, iph: usize, dp: usize, mem: &Vec<u8>, rpl: usize, rph: usize) {
     println!(
         "ipl: {:2X} = {}
 iph: {:2X}
  dp: {:2X} = {:2X}
 rpl: {:2X} = {}
-rph: {:2X}
->>> {}",
+rph: {:2X}",
         ipl,
         Instruction::display_byte(mem[ipl]),
         iph,
@@ -131,7 +123,6 @@ rph: {:2X}
         rpl,
         Instruction::display_byte(mem[rpl]),
         rph,
-        inst
     );
 }
 
