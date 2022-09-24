@@ -1,18 +1,30 @@
+use clap::Parser;
 use itertools::Itertools;
 use pretty_hex::*;
-use std::env;
 use std::fs;
+use std::io::{stdin, Read};
+
+#[derive(Parser)]
+#[clap(version, about)]
+struct Args {
+    /// Path to file to execute
+    #[clap(value_parser)]
+    path: String,
+
+    /// Set debug level
+    /// -d for stepping
+    /// -dd for debug info at step
+    #[clap(short, action = clap::ArgAction::Count)]
+    debug: u8,
+}
 
 fn main() -> Result<(), std::io::Error> {
     println!("carter-emu v{}", env!("CARGO_PKG_VERSION"));
 
     // load program from file into memory
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 2 {
-        panic!("usage: ce <filename>");
-    }
+    let args = Args::parse();
 
-    let mut in_bytes: Vec<u8> = fs::read(&args[1])?;
+    let mut in_bytes: Vec<u8> = fs::read(&args.path)?;
     in_bytes.pop(); // remove trailing newline
     let instructions = Instruction::from_chars(in_bytes.into_iter());
 
@@ -28,20 +40,22 @@ fn main() -> Result<(), std::io::Error> {
     }
     mem.resize(256, 0);
 
-    execute(&mut mem);
+    execute(&mut mem, args.debug);
 
     println!("{}", pretty_hex(&mem));
 
     Ok(())
 }
 
-fn execute(mem: &mut Vec<u8>) {
+fn execute(mem: &mut Vec<u8>, step: u8) {
     // prep registers
     let mut dp = 0; // data pointer
     let mut ipl = 0; // instruction pointer low
     let mut iph = 0; // instruction pointer high
     let mut rpl = 0; // return pointer low
     let mut rph = 0; // return pointer high
+
+    let mut stdin = stdin();
 
     loop {
         if ipl == 256 {
@@ -51,6 +65,14 @@ fn execute(mem: &mut Vec<u8>) {
 
         loop {
             let inst = ins[iph];
+
+            if step > 2 {
+                print_state(ipl, iph, dp, mem, rpl, rph, inst);
+            }
+            if step > 1 {
+                let _ = stdin.read(&mut [0u8]).unwrap();
+            }
+
             match inst {
                 Instruction::LoopOpen => {
                     rpl = ipl;
@@ -85,6 +107,34 @@ fn execute(mem: &mut Vec<u8>) {
     }
 }
 
+fn print_state(
+    ipl: usize,
+    iph: usize,
+    dp: usize,
+    mem: &Vec<u8>,
+    rpl: usize,
+    rph: usize,
+    inst: Instruction,
+) {
+    println!(
+        "ipl: {:2X} = {}
+iph: {:2X}
+ dp: {:2X} = {:2X}
+rpl: {:2X} = {}
+rph: {:2X}
+>>> {}",
+        ipl,
+        Instruction::display_byte(mem[ipl]),
+        iph,
+        dp,
+        mem[dp],
+        rpl,
+        Instruction::display_byte(mem[rpl]),
+        rph,
+        inst
+    );
+}
+
 #[derive(Copy, Clone)]
 enum Instruction {
     LoopOpen,
@@ -110,7 +160,6 @@ impl fmt::Display for Instruction {
 }
 
 impl Instruction {
-    #[allow(dead_code)]
     fn from_byte(byte: u8) -> Vec<Instruction> {
         // split into 2-bit pairs before mapping
         [
@@ -155,5 +204,10 @@ impl Instruction {
             | Instruction::to_pair(is.get(1)) << 4
             | Instruction::to_pair(is.get(2)) << 2
             | Instruction::to_pair(is.get(3))
+    }
+
+    fn display_byte(byte: u8) -> String {
+        let is = Instruction::from_byte(byte);
+        format!("{} {} {} {}", is[0], is[1], is[2], is[3])
     }
 }
