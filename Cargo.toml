@@ -3,8 +3,13 @@ name = "carter-emu"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "ce"
+path = "src/main.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-itertools = "*"
-pretty-hex = "*"
+itertools = "0.10.*"
+pretty-hex = "0.3.*"
+clap = {version = "3.2.*", features=["derive"]}
